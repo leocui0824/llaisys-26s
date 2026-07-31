@@ -192,13 +192,11 @@ tensor_t Tensor::permute(const std::vector<size_t> &order) const {
 }
 
 tensor_t Tensor::view(const std::vector<size_t> &new_shape) const {
-    // Validate total element count
     size_t new_numel = 1;
     for (auto s : new_shape) new_numel *= s;
     CHECK_ARGUMENT(new_numel == numel(), "view: total element count mismatch");
     size_t new_ndim = new_shape.size();
 
-    // Contiguous case: simply recompute strides
     if (isContiguous()) {
         std::vector<ptrdiff_t> new_strides(new_ndim);
         ptrdiff_t stride = 1;
