@@ -28,7 +28,6 @@ void self_attention_(T *out, const T *q, const T *k, const T *v,
             for (size_t j = 0; j < kvlen; j++) {
                 // Causal mask: j > i + (kvlen - qlen) → -inf
                 if (static_cast<int64_t>(j) > static_cast<int64_t>(i) + static_cast<int64_t>(kvlen - qlen)) {
-                    max_score = 0.0f;  // at least one non-masked entry exists
                     scores[j] = -std::numeric_limits<float>::infinity();
                     continue;
                 }
