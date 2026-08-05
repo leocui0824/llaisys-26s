@@ -1,4 +1,5 @@
 #include "rms_norm_nvidia.cuh"
+#include "../../nvidia_util.cuh"
 #include <cuda_runtime.h>
 #include <cmath>
 
@@ -13,7 +14,7 @@ __global__ void rms_norm_kernel(T *out, const T *in, const T *weight,
 
     float sq_sum = 0.0f;
     for (size_t j = threadIdx.x; j < D; j += blockDim.x) {
-        float v = static_cast<float>(in[row * D + j]);
+        float v = d2f(in[row * D + j]);
         sq_sum += v * v;
     }
 
@@ -29,13 +30,13 @@ __global__ void rms_norm_kernel(T *out, const T *in, const T *weight,
         __syncthreads();
     }
 
-    float r_rsqrt = rsqrtf(s_sq_sum[0] / static_cast<float>(D) + eps);
+    float r_rsqrt = rsqrtf(s_sq_sum[0] / d2f(D) + eps);
 
     // Apply normalization
     for (size_t j = threadIdx.x; j < D; j += blockDim.x) {
-        float in_val = static_cast<float>(in[row * D + j]);
-        float w_val = static_cast<float>(weight[j]);
-        out[row * D + j] = static_cast<T>(in_val * r_rsqrt * w_val);
+        float in_val = d2f(in[row * D + j]);
+        float w_val = d2f(weight[j]);
+        out[row * D + j] = f2d<T>(in_val * r_rsqrt * w_val);
     }
 }
 

@@ -1,5 +1,5 @@
 #include "embedding_nvidia.cuh"
-#include "../../../utils.hpp"
+#include "../../nvidia_util.cuh"
 #include <cuda_runtime.h>
 
 template <typename T>

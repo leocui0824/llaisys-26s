@@ -1,4 +1,5 @@
 #include "linear_nvidia.cuh"
+#include "../../nvidia_util.cuh"
 #include <cuda_runtime.h>
 
 #define TILE_SIZE 16
@@ -19,29 +20,29 @@ __global__ void linear_kernel(T *out, const T *in, const T *weight, const T *bia
         if (row < M && k < K) {
             s_in[threadIdx.y][threadIdx.x] = in[row * K + k];
         } else {
-            s_in[threadIdx.y][threadIdx.x] = static_cast<T>(0);
+            s_in[threadIdx.y][threadIdx.x] = f2d<T>(0.0f);
         }
         // Cooperative load of weight tile (weight[j][k] at index j*K+k)
         size_t w_row = t * TILE_SIZE + threadIdx.y;
         if (col < N && w_row < K) {
             s_weight[threadIdx.y][threadIdx.x] = weight[col * K + w_row];
         } else {
-            s_weight[threadIdx.y][threadIdx.x] = static_cast<T>(0);
+            s_weight[threadIdx.y][threadIdx.x] = f2d<T>(0.0f);
         }
         __syncthreads();
 
         for (size_t kk = 0; kk < TILE_SIZE; kk++) {
-            sum += static_cast<float>(s_in[threadIdx.y][kk]) *
-                   static_cast<float>(s_weight[kk][threadIdx.x]);
+            sum += d2f(s_in[threadIdx.y][kk]) *
+                   d2f(s_weight[kk][threadIdx.x]);
         }
         __syncthreads();
     }
 
     if (row < M && col < N) {
         if (bias != nullptr) {
-            sum += static_cast<float>(bias[col]);
+            sum += d2f(bias[col]);
         }
-        out[row * N + col] = static_cast<T>(sum);
+        out[row * N + col] = f2d<T>(sum);
     }
 }
 

@@ -1,4 +1,5 @@
 #include "argmax_nvidia.cuh"
+#include "../../nvidia_util.cuh"
 #include <cuda_runtime.h>
 #include <cfloat>
 #include <cstring>
@@ -14,7 +15,7 @@ __global__ void argmax_reduce_kernel(const T *vals, size_t N,
     size_t tid = threadIdx.x;
     size_t gid = blockIdx.x * blockDim.x + tid;
 
-    float val = (gid < N) ? static_cast<float>(vals[gid]) : -FLT_MAX;
+    float val = (gid < N) ? d2f(vals[gid]) : -FLT_MAX;
     int64_t idx = (gid < N) ? static_cast<int64_t>(gid) : -1;
 
     s_vals[tid] = val;

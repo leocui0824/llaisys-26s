@@ -1,4 +1,5 @@
 #include "self_attention_nvidia.cuh"
+#include "../../nvidia_util.cuh"
 #include <cuda_runtime.h>
 #include <cmath>
 #include <cfloat>
@@ -13,7 +14,6 @@ __global__ void self_attention_kernel(
     size_t q_stride_hd = nh * hd;
     size_t k_stride_hd = nkvh * hd;
 
-    // Map block to (q_head, q_pos)
     size_t q_head = blockIdx.y;
     size_t q_pos = blockIdx.x;
     if (q_head >= nh || q_pos >= qlen) return;
@@ -21,68 +21,12 @@ __global__ void self_attention_kernel(
     size_t kv_head = q_head / n_rep;
     size_t tid = threadIdx.x;
 
-    // ---- Compute scores for this query ----
-    // Each thread computes partial dot product, then reduce via shared memory
-
-    __shared__ float s_scores[256];
-    __shared__ float s_max;
-    __shared__ float s_sum;
-
-    float max_score = -FLT_MAX;
-
-    // For each key position, compute dot product (using thread cooperation)
-    for (size_t j = 0; j < kvlen; j++) {
-        // Causal mask
-        if (static_cast<int64_t>(j) > static_cast<int64_t>(q_pos) + static_cast<int64_t>(kvlen - qlen)) {
-            s_scores[tid] = -FLT_MAX;
-        } else {
-            // Thread-parallel dot product
-            float dot = 0.0f;
-            for (size_t d = tid; d < hd; d += blockDim.x) {
-                size_t q_idx = q_pos * q_stride_hd + q_head * hd + d;
-                size_t k_idx = j * k_stride_hd + kv_head * hd + d;
-                dot += static_cast<float>(q[q_idx]) * static_cast<float>(k[k_idx]);
-            }
-
-            // Reduce partial dots within thread block
-            __syncthreads();
-            s_scores[tid] = dot;
-            __syncthreads();
-            for (size_t s = blockDim.x / 2; s > 0; s >>= 1) {
-                if (tid < s) {
-                    s_scores[tid] += s_scores[tid + s];
-                }
-                __syncthreads();
-            }
-            dot = s_scores[0];
-
-            s_scores[tid] = dot * scale;
-        }
-        __syncthreads();
-
-        float score = s_scores[tid == 0 ? 0 : tid]; // tid 0 holds the actual score
-        // Actually, let me restructure. In the current approach, s_scores holds per-key-position score.
-
-        if (tid == 0) {
-            float sc = (s_scores[0] == -FLT_MAX || s_scores[0] != s_scores[0])
-                           ? -FLT_MAX : s_scores[0];
-            if (sc > max_score) max_score = sc;
-        }
-    }
-
-    // ---- Softmax + weighted sum ----
-    // Simplified: each thread handles its portion of the V weighted sum
-    // Pre-compute softmax weights (stored in shared memory per key position)
-
-    // For brevity, use a simplified approach: compute sequentially per kv position
     for (size_t d = tid; d < hd; d += blockDim.x) {
         float val = 0.0f;
         float sum = 0.0f;
         float m = -FLT_MAX;
 
-        // Compute scores first to find max
-        float scores_buf[256];  // Limited by kvlen
-        // WARNING: This assumes kvlen <= 256. For longer sequences, use global memory.
+        float scores_buf[256];
 
         for (size_t j = 0; j < kvlen && j < 256; j++) {
             if (static_cast<int64_t>(j) > static_cast<int64_t>(q_pos) + static_cast<int64_t>(kvlen - qlen)) {
@@ -92,7 +36,7 @@ __global__ void self_attention_kernel(
                 for (size_t dm = 0; dm < hd; dm++) {
                     size_t q_idx = q_pos * q_stride_hd + q_head * hd + dm;
                     size_t k_idx = j * k_stride_hd + kv_head * hd + dm;
-                    dot += static_cast<float>(q[q_idx]) * static_cast<float>(k[k_idx]);
+                    dot += d2f(q[q_idx]) * d2f(k[k_idx]);
                 }
                 scores_buf[j] = dot * scale;
             }
@@ -115,11 +59,11 @@ __global__ void self_attention_kernel(
         // Weighted sum
         for (size_t j = 0; j < kvlen && j < 256; j++) {
             size_t v_idx = j * k_stride_hd + kv_head * hd + d;
-            val += scores_buf[j] * static_cast<float>(v[v_idx]);
+            val += scores_buf[j] * d2f(v[v_idx]);
         }
 
         size_t out_idx = q_pos * q_stride_hd + q_head * hd + d;
-        out[out_idx] = static_cast<T>(val);
+        out[out_idx] = f2d<T>(val);
     }
 }
 

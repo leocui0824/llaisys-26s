@@ -1,4 +1,5 @@
 #include "rope_nvidia.cuh"
+#include "../../nvidia_util.cuh"
 #include <cuda_runtime.h>
 #include <cmath>
 
@@ -13,14 +14,13 @@ __global__ void rope_kernel(T *out, const T *in, const int64_t *pos_ids,
     size_t total = seq_len * n_heads * half;
     if (idx >= total) return;
 
-    // Decompose linear index: idx = pos * (n_heads * half) + head * half + pair_i
     size_t pos = idx / (n_heads * half);
     size_t rem = idx % (n_heads * half);
     size_t head = rem / half;
     size_t i = rem % half;
 
-    float pos_val = static_cast<float>(pos_ids[pos]);
-    float freq = pos_val / powf(theta, 2.0f * static_cast<float>(i) / static_cast<float>(head_dim));
+    float pos_val = d2f(pos_ids[pos]);
+    float freq = pos_val / powf(theta, 2.0f * d2f(i) / d2f(head_dim));
     float cos_val = cosf(freq);
     float sin_val = sinf(freq);
 
@@ -28,11 +28,11 @@ __global__ void rope_kernel(T *out, const T *in, const int64_t *pos_ids,
     size_t idx_a = base + i;
     size_t idx_b = base + half + i;
 
-    float a = static_cast<float>(in[idx_a]);
-    float b = static_cast<float>(in[idx_b]);
+    float a = d2f(in[idx_a]);
+    float b = d2f(in[idx_b]);
 
-    out[idx_a] = static_cast<T>(a * cos_val - b * sin_val);
-    out[idx_b] = static_cast<T>(b * cos_val + a * sin_val);
+    out[idx_a] = f2d<T>(a * cos_val - b * sin_val);
+    out[idx_b] = f2d<T>(b * cos_val + a * sin_val);
 }
 
 namespace llaisys::ops::nvidia {

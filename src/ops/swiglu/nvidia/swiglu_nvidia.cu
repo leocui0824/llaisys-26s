@@ -1,5 +1,5 @@
 #include "swiglu_nvidia.cuh"
-#include "../../../utils.hpp"
+#include "../../nvidia_util.cuh"
 #include <cuda_runtime.h>
 #include <cmath>
 
@@ -8,10 +8,10 @@ __global__ void swiglu_kernel(T *out, const T *gate, const T *up, size_t N) {
     size_t i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
 
-    float g = static_cast<float>(gate[i]);
-    float u = static_cast<float>(up[i]);
+    float g = d2f(gate[i]);
+    float u = d2f(up[i]);
     float silu = g / (1.0f + expf(-g));
-    out[i] = static_cast<T>(u * silu);
+    out[i] = f2d<T>(u * silu);
 }
 
 namespace llaisys::ops::nvidia {
