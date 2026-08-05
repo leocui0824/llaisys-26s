@@ -8,6 +8,9 @@ target("llaisys-device-nvidia")
 
     add_links("cudart")
     add_files("../src/device/nvidia/*.cu")
+    if not is_plat("windows") then
+        add_cuflags("-Xcompiler=-fPIC")
+    end
 
     on_install(function (target) end)
 target_end()
@@ -27,6 +30,9 @@ target("llaisys-ops-nvidia")
 
     add_links("cudart")
     add_files("../src/ops/*/nvidia/*.cu")
+    if not is_plat("windows") then
+        add_cuflags("-Xcompiler=-fPIC")
+    end
 
     on_install(function (target) end)
 target_end()
