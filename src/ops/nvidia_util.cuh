@@ -2,7 +2,7 @@
 
 #include <cuda_fp16.h>
 #include <cuda_bf16.h>
-#include "../../utils.hpp"
+#include "../utils.hpp"
 
 // Convert any value to float (works for int, size_t, fp16, bf16, float, etc.)
 template<typename U>
