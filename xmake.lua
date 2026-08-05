@@ -136,6 +136,15 @@ target("llaisys")
     add_files("src/llaisys/*.cc")
     set_installdir(".")
 
+    if has_config("nv-gpu") then
+        add_links("cudart", "cudadevrt")
+        add_ldflags("-L/usr/local/cuda/lib64",
+                    "-Wl,--whole-archive",
+                    "-lllaisys-ops-nvidia",
+                    "-lllaisys-device-nvidia",
+                    "-Wl,--no-whole-archive")
+    end
+
     
     after_install(function (target)
         -- copy shared library to python package
