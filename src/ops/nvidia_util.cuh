@@ -1,10 +1,8 @@
 #pragma once
 
 #include <cuda_fp16.h>
-#include <cuda_bf16.h>
 #include "../utils.hpp"
 
-// Convert any value to float (works for int, size_t, fp16, bf16, float, etc.)
 template<typename U>
 __device__ __forceinline__ float d2f(U v) { return static_cast<float>(v); }
 
@@ -14,10 +12,14 @@ __device__ __forceinline__ float d2f(llaisys::fp16_t v) {
 }
 template<>
 __device__ __forceinline__ float d2f(llaisys::bf16_t v) {
-    return __bfloat162float(*reinterpret_cast<const __nv_bfloat16*>(&v));
+    uint16_t raw;
+    __builtin_memcpy(&raw, &v, 2);
+    uint32_t bits = static_cast<uint32_t>(raw) << 16;
+    float f;
+    __builtin_memcpy(&f, &bits, 4);
+    return f;
 }
 
-// Convert float to target type T (explicit specialization)
 template<typename T>
 __device__ __forceinline__ T f2d(float v) { return static_cast<T>(v); }
 
@@ -30,6 +32,10 @@ __device__ __forceinline__ llaisys::fp16_t f2d<llaisys::fp16_t>(float v) {
 }
 template<>
 __device__ __forceinline__ llaisys::bf16_t f2d<llaisys::bf16_t>(float v) {
-    __nv_bfloat16 b = __float2bfloat16(v);
-    return *reinterpret_cast<const llaisys::bf16_t*>(&b);
+    uint32_t bits;
+    __builtin_memcpy(&bits, &v, 4);
+    uint16_t raw = static_cast<uint16_t>(bits >> 16);
+    llaisys::bf16_t result;
+    __builtin_memcpy(&result, &raw, 2);
+    return result;
 }

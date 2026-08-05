@@ -4,65 +4,62 @@
 #include <cmath>
 #include <cfloat>
 
-// Each block handles one (query_head, query_position) pair
 template <typename T>
 __global__ void self_attention_kernel(
     T *out, const T *q, const T *k, const T *v,
     size_t qlen, size_t kvlen, size_t nh, size_t nkvh, size_t hd, float scale) {
 
+    __shared__ float s_scores[1024];
     size_t n_rep = nh / nkvh;
-    size_t q_stride_hd = nh * hd;
-    size_t k_stride_hd = nkvh * hd;
-
+    size_t q_stride = nh * hd;
+    size_t k_stride = nkvh * hd;
     size_t q_head = blockIdx.y;
     size_t q_pos = blockIdx.x;
     if (q_head >= nh || q_pos >= qlen) return;
-
     size_t kv_head = q_head / n_rep;
     size_t tid = threadIdx.x;
 
-    for (size_t d = tid; d < hd; d += blockDim.x) {
-        float val = 0.0f;
-        float sum = 0.0f;
+    // Thread 0 computes all scores into shared memory
+    if (tid == 0) {
         float m = -FLT_MAX;
-
-        float scores_buf[256];
-
-        for (size_t j = 0; j < kvlen && j < 256; j++) {
-            if (static_cast<int64_t>(j) > static_cast<int64_t>(q_pos) + static_cast<int64_t>(kvlen - qlen)) {
-                scores_buf[j] = -FLT_MAX;
+        for (size_t j = 0; j < kvlen; j++) {
+            if (static_cast<int64_t>(j) > static_cast<int64_t>(q_pos) +
+                static_cast<int64_t>(kvlen - qlen)) {
+                s_scores[j] = -FLT_MAX;
             } else {
                 float dot = 0.0f;
                 for (size_t dm = 0; dm < hd; dm++) {
-                    size_t q_idx = q_pos * q_stride_hd + q_head * hd + dm;
-                    size_t k_idx = j * k_stride_hd + kv_head * hd + dm;
+                    size_t q_idx = q_pos * q_stride + q_head * hd + dm;
+                    size_t k_idx = j * k_stride + kv_head * hd + dm;
                     dot += d2f(q[q_idx]) * d2f(k[k_idx]);
                 }
-                scores_buf[j] = dot * scale;
+                s_scores[j] = dot * scale;
             }
-            if (scores_buf[j] > m) m = scores_buf[j];
+            if (s_scores[j] > m) m = s_scores[j];
         }
-
-        // Softmax
-        for (size_t j = 0; j < kvlen && j < 256; j++) {
-            if (scores_buf[j] != -FLT_MAX) {
-                scores_buf[j] = expf(scores_buf[j] - m);
-                sum += scores_buf[j];
+        float sum = 0.0f;
+        for (size_t j = 0; j < kvlen; j++) {
+            if (s_scores[j] != -FLT_MAX) {
+                s_scores[j] = expf(s_scores[j] - m);
+                sum += s_scores[j];
             } else {
-                scores_buf[j] = 0.0f;
+                s_scores[j] = 0.0f;
             }
         }
-        for (size_t j = 0; j < kvlen && j < 256; j++) {
-            scores_buf[j] /= sum;
+        for (size_t j = 0; j < kvlen; j++) {
+            s_scores[j] /= sum;
         }
+    }
+    __syncthreads();
 
-        // Weighted sum
-        for (size_t j = 0; j < kvlen && j < 256; j++) {
-            size_t v_idx = j * k_stride_hd + kv_head * hd + d;
-            val += scores_buf[j] * d2f(v[v_idx]);
+    // All threads compute weighted V sum for their output dims
+    for (size_t d = tid; d < hd; d += blockDim.x) {
+        float val = 0.0f;
+        for (size_t j = 0; j < kvlen; j++) {
+            size_t v_idx = j * k_stride + kv_head * hd + d;
+            val += s_scores[j] * d2f(v[v_idx]);
         }
-
-        size_t out_idx = q_pos * q_stride_hd + q_head * hd + d;
+        size_t out_idx = q_pos * q_stride + q_head * hd + d;
         out[out_idx] = f2d<T>(val);
     }
 }
@@ -74,7 +71,6 @@ void self_attention(std::byte *out, const std::byte *q, const std::byte *k,
                     size_t hd, float scale) {
     dim3 grid(qlen, nh);
     dim3 block(256);
-
     switch (type) {
     case LLAISYS_DTYPE_F32:
         self_attention_kernel<<<grid, block>>>(
