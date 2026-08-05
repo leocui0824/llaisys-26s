@@ -66,7 +66,7 @@ int64_t Qwen2Model::forward(const int64_t *token_ids, size_t ntoken) {
         pos_ids->load(pos_host.data());
     }
 
-    // 3. Skip layers temporarily for debugging
+    // 3. Transformer layers (attention + MLP)
     for (size_t l = 0; l < _meta.nlayer; l++) {
         auto &layer = _layers[l];
 
