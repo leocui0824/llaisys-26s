@@ -2,10 +2,7 @@
 #include "../../nvidia_util.cuh"
 #include <cuda_runtime.h>
 #include <cfloat>
-#include <cstring>
 
-// Block-level argmax reduction kernel
-// Each block finds the max value+index in its chunk, writes to global partial arrays
 template <typename T>
 __global__ void argmax_reduce_kernel(const T *vals, size_t N,
                                       float *block_vals, int64_t *block_idxs) {
@@ -39,10 +36,11 @@ __global__ void argmax_reduce_kernel(const T *vals, size_t N,
     }
 }
 
-// Final reduction: 1 block reduces all block-level results
+// Final reduction writes results to temp float, then convert to T
+template <typename T>
 __global__ void argmax_final_kernel(const float *block_vals, const int64_t *block_idxs,
                                      size_t num_blocks,
-                                     float *out_val, int64_t *out_idx) {
+                                     T *out_val, int64_t *out_idx) {
     __shared__ float s_vals[256];
     __shared__ int64_t s_idxs[256];
 
@@ -66,32 +64,28 @@ __global__ void argmax_final_kernel(const float *block_vals, const int64_t *bloc
     }
 
     if (tid == 0) {
-        *out_val = s_vals[0];
+        *out_val = f2d<T>(s_vals[0]);
         *out_idx = s_idxs[0];
     }
 }
 
 template <typename T>
 static void launch_argmax(const T *d_vals, size_t N,
-                          std::byte *d_max_idx, std::byte *d_max_val,
-                          cudaStream_t stream = nullptr) {
+                          std::byte *d_max_idx, std::byte *d_max_val) {
     size_t block_size = 256;
     size_t grid_size = (N + block_size - 1) / block_size;
 
-    // Allocate temp memory for per-block partials
     float *d_partial_vals;
     int64_t *d_partial_idxs;
     cudaMalloc(&d_partial_vals, grid_size * sizeof(float));
     cudaMalloc(&d_partial_idxs, grid_size * sizeof(int64_t));
 
-    // Step 1: per-block reduction
-    argmax_reduce_kernel<<<grid_size, block_size, 0, stream>>>(
+    argmax_reduce_kernel<<<grid_size, block_size>>>(
         d_vals, N, d_partial_vals, d_partial_idxs);
 
-    // Step 2: final reduction (single block)
-    argmax_final_kernel<<<1, 256, 0, stream>>>(
+    argmax_final_kernel<<<1, 256>>>(
         d_partial_vals, d_partial_idxs, grid_size,
-        reinterpret_cast<float *>(d_max_val),
+        reinterpret_cast<T *>(d_max_val),
         reinterpret_cast<int64_t *>(d_max_idx));
 
     cudaFree(d_partial_vals);
