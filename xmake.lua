@@ -138,11 +138,7 @@ target("llaisys")
 
     if has_config("nv-gpu") then
         add_links("cudart", "cudadevrt")
-        add_ldflags("-L/usr/local/cuda/lib64",
-                    "-Wl,--whole-archive",
-                    "-lllaisys-ops-nvidia",
-                    "-lllaisys-device-nvidia",
-                    "-Wl,--no-whole-archive")
+        add_ldflags("-L/usr/local/cuda/lib64")
     end
 
     
