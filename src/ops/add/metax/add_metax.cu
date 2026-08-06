@@ -1,6 +1,6 @@
-#include "add_nvidia.cuh"
+#include "add_metax.cuh"
 #include "../../metax_util.cuh"
-#include <cuda_runtime.h>
+#include <mc_runtime.h>
 
 template <typename T>
 __global__ void add_kernel(T *c, const T *a, const T *b, size_t N) {

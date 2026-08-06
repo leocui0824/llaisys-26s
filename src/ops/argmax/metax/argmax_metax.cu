@@ -1,6 +1,6 @@
-#include "argmax_nvidia.cuh"
+#include "argmax_metax.cuh"
 #include "../../metax_util.cuh"
-#include <cuda_runtime.h>
+#include <mc_runtime.h>
 #include <cfloat>
 
 template <typename T>
@@ -77,8 +77,8 @@ static void launch_argmax(const T *d_vals, size_t N,
 
     float *d_partial_vals;
     int64_t *d_partial_idxs;
-    cudaMalloc(&d_partial_vals, grid_size * sizeof(float));
-    cudaMalloc(&d_partial_idxs, grid_size * sizeof(int64_t));
+    mcMalloc(&d_partial_vals, grid_size * sizeof(float));
+    mcMalloc(&d_partial_idxs, grid_size * sizeof(int64_t));
 
     argmax_reduce_kernel<<<grid_size, block_size>>>(
         d_vals, N, d_partial_vals, d_partial_idxs);
@@ -88,8 +88,8 @@ static void launch_argmax(const T *d_vals, size_t N,
         reinterpret_cast<T *>(d_max_val),
         reinterpret_cast<int64_t *>(d_max_idx));
 
-    cudaFree(d_partial_vals);
-    cudaFree(d_partial_idxs);
+    mcFree(d_partial_vals);
+    mcFree(d_partial_idxs);
 }
 
 namespace llaisys::ops::nvidia {

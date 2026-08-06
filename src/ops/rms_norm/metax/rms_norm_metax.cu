@@ -1,6 +1,6 @@
-#include "rms_norm_nvidia.cuh"
+#include "rms_norm_metax.cuh"
 #include "../../metax_util.cuh"
-#include <cuda_runtime.h>
+#include <mc_runtime.h>
 #include <cmath>
 
 // Each block handles one row

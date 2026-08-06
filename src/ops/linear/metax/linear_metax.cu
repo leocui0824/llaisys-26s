@@ -1,6 +1,6 @@
-#include "linear_nvidia.cuh"
+#include "linear_metax.cuh"
 #include "../../metax_util.cuh"
-#include <cuda_runtime.h>
+#include <mc_runtime.h>
 
 #define TILE_SIZE 16
 

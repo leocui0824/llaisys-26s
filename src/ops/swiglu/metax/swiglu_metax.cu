@@ -1,6 +1,6 @@
-#include "swiglu_nvidia.cuh"
+#include "swiglu_metax.cuh"
 #include "../../metax_util.cuh"
-#include <cuda_runtime.h>
+#include <mc_runtime.h>
 #include <cmath>
 
 template <typename T>

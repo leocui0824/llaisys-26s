@@ -1,6 +1,6 @@
-#include "self_attention_nvidia.cuh"
+#include "self_attention_metax.cuh"
 #include "../../metax_util.cuh"
-#include <cuda_runtime.h>
+#include <mc_runtime.h>
 #include <cmath>
 #include <cfloat>
 

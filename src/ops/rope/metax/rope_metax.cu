@@ -1,6 +1,6 @@
-#include "rope_nvidia.cuh"
+#include "rope_metax.cuh"
 #include "../../metax_util.cuh"
-#include <cuda_runtime.h>
+#include <mc_runtime.h>
 #include <cmath>
 
 template <typename T>

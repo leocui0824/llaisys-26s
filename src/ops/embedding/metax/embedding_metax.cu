@@ -1,6 +1,6 @@
-#include "embedding_nvidia.cuh"
+#include "embedding_metax.cuh"
 #include "../../metax_util.cuh"
-#include <cuda_runtime.h>
+#include <mc_runtime.h>
 
 template <typename T>
 __global__ void embedding_kernel(T *out, const int64_t *index, const T *weight,
