@@ -100,41 +100,7 @@ MetaX 容器镜像不支持物理 GPU 调度，需联系平台方解决。
 
 ---
 
-## 五、新增/修改文件统计
-
-### 新增文件
-
-| 类别 | 文件 | 说明 |
-|------|------|------|
-| Runtime | `src/device/nvidia/nvidia_runtime_api.cu` | Nvidia 12 个 Runtime API |
-| Runtime | `src/device/metax/metax_runtime_api.cu` | MetaX 12 个 Runtime API |
-| 类型转换 | `src/ops/nvidia_util.cuh` | GPU bf16/fp16 转换 |
-| 类型转换 | `src/ops/metax_util.cuh` | MACA bf16/fp16 转换 |
-| 算子 (Nvidia) | `src/ops/*/nvidia/*.cuh` × 8 | 算子头文件 |
-| 算子 (Nvidia) | `src/ops/*/nvidia/*.cu` × 8 | CUDA 实现 |
-| 算子 (MetaX) | `src/ops/*/metax/*.cuh` × 8 | 算子头文件 |
-| 算子 (MetaX) | `src/ops/*/metax/*.cu` × 8 | MACA 实现 |
-| 构建 | `xmake/nvidia.lua` | Nvidia 构建配置 |
-| 构建 | `xmake/metax.lua` | MetaX 构建配置 |
-
-### 修改文件
-
-| 文件 | 修改内容 |
-|------|----------|
-| `include/llaisys.h` | 添加 `LLAISYS_DEVICE_METAX` |
-| `src/device/runtime_api.hpp` | 添加 `metax::getRuntimeAPI()` 声明 |
-| `src/device/runtime_api.cpp` | 添加 Metax dispatch case |
-| `xmake.lua` | 添加 `--metax-gpu` 选项和 `ENABLE_METAX_API` 宏 |
-| `src/ops/*/op.cpp` × 8 | 添加 `#ifdef ENABLE_METAX_API` 分支 |
-| `python/llaisys/libllaisys/llaisys_types.py` | 添加 `DeviceType.METAX` |
-| `test/test_utils.py` | 添加 metax 设备映射 |
-| `test/ops/*.py` × 8 | 添加 `--device metax` 选项 |
-
-**合计：新增 ~34 个文件，修改 ~14 个文件。**
-
----
-
-## 六、构建与测试命令
+## 五、构建与测试命令
 
 ```bash
 # CPU 版本
@@ -153,7 +119,7 @@ python test/ops/argmax.py --device metax
 
 ---
 
-## 七、总结
+## 六、总结
 
 完成了 LLAISYS 全部 4 个作业，实现了从 Tensor 数据结构、Transformer 算子到 Qwen2 模型推理的完整框架。支持 CPU、Nvidia CUDA、沐曦 MetaX MACA 三个平台。
 
