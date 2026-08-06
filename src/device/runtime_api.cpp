@@ -71,13 +71,18 @@ const LlaisysRuntimeAPI *getUnsupportedRuntimeAPI() {
 }
 
 const LlaisysRuntimeAPI *getRuntimeAPI(llaisysDeviceType_t device_type) {
-    // Implement for all device types
     switch (device_type) {
     case LLAISYS_DEVICE_CPU:
         return llaisys::device::cpu::getRuntimeAPI();
     case LLAISYS_DEVICE_NVIDIA:
 #ifdef ENABLE_NVIDIA_API
         return llaisys::device::nvidia::getRuntimeAPI();
+#else
+        return getUnsupportedRuntimeAPI();
+#endif
+    case LLAISYS_DEVICE_METAX:
+#ifdef ENABLE_METAX_API
+        return llaisys::device::metax::getRuntimeAPI();
 #else
         return getUnsupportedRuntimeAPI();
 #endif

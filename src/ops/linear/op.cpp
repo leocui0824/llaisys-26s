@@ -7,6 +7,9 @@
 #ifdef ENABLE_NVIDIA_API
 #include "nvidia/linear_nvidia.cuh"
 #endif
+#ifdef ENABLE_METAX_API
+#include "metax/linear_metax.cuh"
+#endif
 
 namespace llaisys::ops {
 void linear(tensor_t out, tensor_t in, tensor_t weight, tensor_t bias) {

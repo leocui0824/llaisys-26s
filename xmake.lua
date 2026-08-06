@@ -18,6 +18,17 @@ if has_config("nv-gpu") then
     includes("xmake/nvidia.lua")
 end
 
+option("metax-gpu")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Whether to compile implementations for Metax MACA GPU")
+option_end()
+
+if has_config("metax-gpu") then
+    add_defines("ENABLE_METAX_API")
+    includes("xmake/metax.lua")
+end
+
 target("llaisys-utils")
     set_kind("static")
 

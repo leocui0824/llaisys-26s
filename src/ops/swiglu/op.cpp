@@ -7,6 +7,9 @@
 #ifdef ENABLE_NVIDIA_API
 #include "nvidia/swiglu_nvidia.cuh"
 #endif
+#ifdef ENABLE_METAX_API
+#include "metax/swiglu_metax.cuh"
+#endif
 
 namespace llaisys::ops {
 void swiglu(tensor_t out, tensor_t gate, tensor_t up) {
@@ -49,6 +52,10 @@ void swiglu(tensor_t out, tensor_t gate, tensor_t up) {
 #ifdef ENABLE_NVIDIA_API
     case LLAISYS_DEVICE_NVIDIA:
         return nvidia::swiglu(out->data(), gate->data(), up->data(), out->dtype(), numel);
+#endif
+#ifdef ENABLE_METAX_API
+    case LLAISYS_DEVICE_METAX:
+        return metax::swiglu(out->data(), gate->data(), up->data(), out->dtype(), numel);
 #endif
     default:
         EXCEPTION_UNSUPPORTED_DEVICE;
